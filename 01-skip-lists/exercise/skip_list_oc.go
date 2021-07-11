@@ -31,14 +31,7 @@ func newSkipListOC() *skipListOC {
 }
 
 func (o *skipListOC) Get(key string) (string, bool) {
-	x := o.head
-
-	for i := o.level; i >= 1; i-- {
-		for x.next[i-1] != nil && x.next[i-1].item.Key < key {
-			x = x.next[i-1]
-		}
-	}
-	x = x.next[0]
+	x := o.firstGE(key, nil)
 	if x != nil && x.item.Key == key {
 		return x.item.Value, true
 	}
