@@ -1,12 +1,16 @@
 package main
 
+import (
+	"../../common"
+)
+
 const (
 	maxBlockSize = 500
 	splitSize    = maxBlockSize / 2
 )
 
 type linkedBlockNode struct {
-	items []Item
+	items []common.Item
 	next  *linkedBlockNode
 	prev  *linkedBlockNode
 }
@@ -90,7 +94,7 @@ func (o *linkedBlockOC) Delete(key string) bool {
 	return ok
 }
 
-func (o *linkedBlockOC) RangeScan(startKey, endKey string) Iterator {
+func (o *linkedBlockOC) RangeScan(startKey, endKey string) common.Iterator {
 	b := o.firstGE(startKey)
 	index := 0
 	if b != o.tail {

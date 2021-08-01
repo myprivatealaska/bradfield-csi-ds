@@ -7,6 +7,9 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	"../../common"
+	"../../skip_list"
 )
 
 const (
@@ -36,7 +39,7 @@ func loadWords(limit int) ([]string, error) {
 
 var expectedRangeScanItems int = -1
 
-func runTest(words []string, o OC, name string) {
+func runTest(words []string, o common.OC, name string) {
 	fmt.Printf("%-25s", name)
 
 	// Puts
@@ -125,7 +128,7 @@ func main() {
 	fmt.Printf("----------------------------------------------------------------------------------------------------\n")
 
 	for _, testCase := range []struct {
-		o    OC
+		o    common.OC
 		name string
 	}{
 		{newSliceOC(), "Slice"},
@@ -133,7 +136,7 @@ func main() {
 		{newLinkedBlockOC(), "Linked Block"},
 		{newBstOC(), "Binary Search Tree"},
 		{newRbTreeOC(), "Red Black Tree"},
-		{newSkipListOC(), "Skip List"},
+		{skip_list.NewSkipListOC(), "Skip List"},
 	} {
 		if len(words) > limit {
 			words = words[:limit]
