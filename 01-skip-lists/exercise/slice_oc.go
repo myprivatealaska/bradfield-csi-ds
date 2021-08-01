@@ -1,5 +1,9 @@
 package main
 
+import (
+	"../../common"
+)
+
 // sliceOC is not bad for searching, but terrible for insertion and deletion.
 // It stores items in a slice and uses binary search to find items of interest
 // (whether searching, inserting, or removing). However, inserting and removing
@@ -9,7 +13,7 @@ package main
 // can be reused for the "linked block" approach, where each block has its own
 // slice of items.
 type sliceOC struct {
-	items []Item
+	items []common.Item
 }
 
 func newSliceOC() *sliceOC {
@@ -28,7 +32,7 @@ func (o *sliceOC) Delete(key string) bool {
 	return sliceDelete(&o.items, key)
 }
 
-func (o *sliceOC) RangeScan(startKey, endKey string) Iterator {
+func (o *sliceOC) RangeScan(startKey, endKey string) common.Iterator {
 	return &sliceOCIterator{o, sliceFirstGE(o.items, startKey), startKey, endKey}
 }
 

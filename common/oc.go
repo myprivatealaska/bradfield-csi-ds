@@ -1,4 +1,4 @@
-package main
+package common
 
 // OC is an Ordered Collection, similar to a map / Python dict / Ruby hash, but
 // it additionally stores keys in order (and thus supports range scans).

@@ -1,7 +1,11 @@
 package main
 
+import (
+	"../../common"
+)
+
 type linkedNode struct {
-	item Item
+	item common.Item
 	next *linkedNode
 	prev *linkedNode
 }
@@ -50,7 +54,7 @@ func (o *linkedOC) Put(key, value string) bool {
 		return false
 	} else {
 		newNode := &linkedNode{
-			item: Item{key, value},
+			item: common.Item{key, value},
 			next: node,
 			prev: node.prev,
 		}
@@ -70,7 +74,7 @@ func (o *linkedOC) Delete(key string) bool {
 	return false
 }
 
-func (o *linkedOC) RangeScan(startKey, endKey string) Iterator {
+func (o *linkedOC) RangeScan(startKey, endKey string) common.Iterator {
 	node := o.firstGE(startKey)
 	return &linkedOCIterator{o, node, startKey, endKey}
 }

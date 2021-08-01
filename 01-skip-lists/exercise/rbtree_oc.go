@@ -1,5 +1,9 @@
 package main
 
+import (
+	"../../common"
+)
+
 // rbTreeOC stores items in a Red Black Tree implementation from Github.
 type rbTreeOC struct {
 	tree *Tree
@@ -31,7 +35,7 @@ func (o *rbTreeOC) Delete(key string) bool {
 	return true
 }
 
-func (o *rbTreeOC) RangeScan(startKey, endKey string) Iterator {
+func (o *rbTreeOC) RangeScan(startKey, endKey string) common.Iterator {
 	var rbIter *RBIterator
 	node, ok := o.tree.Ceiling(startKey)
 	if ok {
