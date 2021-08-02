@@ -15,8 +15,11 @@ func TestBitmap(t *testing.T) {
 	b1 := newUncompressedBitmap()
 	m1 := make(map[uint32]struct{})
 
+	//b1.Set(uint32(10000))
+	//b1.Get(uint32(10000))
+
 	// Call Set a bunch
-	for i := 0; i < items; i++ {
+	for i := 0; i < 10; i++ {
 		x := start + uint32(rand.Intn(limit))
 		b1.Set(x)
 		m1[x] = struct{}{}
@@ -30,7 +33,7 @@ func TestBitmap(t *testing.T) {
 		}
 	}
 
-	/* TODO: Uncomment this section once you get Union and Intersect working.
+	// TODO: Uncomment this section once you get Union and Intersect working.
 	b2 := newUncompressedBitmap()
 	m2 := make(map[uint32]struct{})
 
@@ -53,7 +56,6 @@ func TestBitmap(t *testing.T) {
 			t.Fatalf("Intersect: Get should've returned %t for %d\n", ok1 && ok2, x)
 		}
 	}
-	*/
 
 	/* TODO: Uncomment this section once you get compression / decompression working
 	compressed := compress(b1)
