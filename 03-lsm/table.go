@@ -1,4 +1,4 @@
-package main
+package table
 
 import (
 	"bufio"
@@ -28,6 +28,7 @@ type indexEntry struct {
 	key       string
 	offset    uint32
 	blockSize uint32
+	itemCount uint32
 }
 
 /*
@@ -56,6 +57,8 @@ func Build(path string, sortedItems []Item) error {
 
 	totalBytesWritten := 0
 	footer := []indexEntry{}
+	itemCount := 0
+	var lastWrittenKey string
 
 	for _, item := range sortedItems {
 		// this block if full. need to flush, clean up, and start a new one
@@ -67,11 +70,17 @@ func Build(path string, sortedItems []Item) error {
 			}
 			// set up index entry
 			footer = append(footer, indexEntry{
-				key:       item.Key,
+				key:       lastWrittenKey,
 				offset:    uint32(totalBytesWritten),
 				blockSize: uint32(bytesWritten),
+				itemCount: uint32(itemCount),
 			})
 			totalBytesWritten += bytesWritten
+			itemCount = 0
+		}
+
+		if item.Key == "dbofierrjmj" {
+			fmt.Printf("I exist!\n")
 		}
 
 		// put bytes for this item in the byteArr for future write
@@ -89,6 +98,9 @@ func Build(path string, sortedItems []Item) error {
 
 		buf.Write(valSizeBytes)
 		buf.Write(valBytes)
+		itemCount++
+		lastWrittenKey = item.Key
+		fmt.Printf("item count %d\n", itemCount)
 	}
 
 	if buf.Len() > 0 {
@@ -98,9 +110,10 @@ func Build(path string, sortedItems []Item) error {
 		}
 		// set up index entry
 		footer = append(footer, indexEntry{
-			key:       sortedItems[len(sortedItems)-1].Key,
+			key:       lastWrittenKey,
 			offset:    uint32(totalBytesWritten),
 			blockSize: uint32(bytesWritten),
+			itemCount: uint32(itemCount),
 		})
 		totalBytesWritten += bytesWritten
 	}
@@ -122,6 +135,10 @@ func Build(path string, sortedItems []Item) error {
 		sizeBytes := make([]byte, KEY_LENGTH_SIZE)
 		binary.BigEndian.PutUint32(sizeBytes, entry.blockSize)
 		buf.Write(sizeBytes)
+
+		countBytes := make([]byte, KEY_LENGTH_SIZE)
+		binary.BigEndian.PutUint32(countBytes, entry.itemCount)
+		buf.Write(countBytes)
 	}
 
 	// flush footer bytes to file
@@ -192,13 +209,16 @@ func LoadTable(path string) (*Table, error) {
 		if readIndexErr != nil {
 			return nil, readIndexErr
 		}
-		table.BlockIndex.Put(entry.key, fmt.Sprintf("%v-%v", strconv.Itoa(int(entry.offset)), strconv.Itoa(int(entry.blockSize))))
+		fmt.Printf("Index entry %v %d\n", entry.key, entry.offset)
+		table.BlockIndex.Put(entry.key, fmt.Sprintf("%v-%v-%v", strconv.Itoa(int(entry.offset)), strconv.Itoa(int(entry.blockSize)), strconv.Itoa(int(entry.itemCount))))
 	}
 
 	return &table, nil
 }
 
 func (t *Table) Get(key string) (string, bool, error) {
+
+	fmt.Printf("Looking for %v\n", key)
 
 	// find the index block where the key might be
 	indexNode := t.BlockIndex.FirstGE(key, nil)
@@ -209,18 +229,28 @@ func (t *Table) Get(key string) (string, bool, error) {
 	valueParts := strings.Split(indexNode.Item.Value, "-")
 	offset, _ := strconv.Atoi(valueParts[0])
 	size, _ := strconv.Atoi(valueParts[1])
+	count, _ := strconv.Atoi(valueParts[2])
 
-	log.Printf("Offset %d Size %d \n", offset, size)
+	log.Printf("Offset %d Size %d Count %d \n", offset, size, count)
 
+	f, err := os.Open(t.FilePath)
+	if err != nil {
+		return "", false, nil
+	}
+	defer f.Close()
+
+	blockBuf := make([]byte, size)
+	if _, readAtErr := f.ReadAt(blockBuf, int64(offset)); readAtErr != nil {
+		return "", false, readAtErr
+	}
+
+	items := deserializeBlock(blockBuf, count)
+	for i := 0; i < count; i++ {
+		if items[i].Key == key {
+			return items[i].Value, true, nil
+		}
+	}
 	return "", false, nil
-
-	//f, err := os.Open(t.FilePath)
-	//if err != nil {
-	//	return "", false, nil
-	//}
-	//defer f.Close()
-	//
-	//f.Seek(int64(offset), io.SeekStart)
 }
 
 func (t *Table) RangeScan(startKey, endKey string) (Iterator, error) {
@@ -251,6 +281,31 @@ func flushBlockToFile(f *os.File, buffer *bytes.Buffer) (int, error) {
 	return bytesWritten, nil
 }
 
+func deserializeBlock(blockBuf []byte, count int) []Item {
+	index := uint32(0)
+	items := make([]Item, count)
+	for i := 0; i < count; i++ {
+		keySize := binary.BigEndian.Uint32(blockBuf[index : index+4])
+		index += 4
+		keyEnd := index + keySize
+		key := string(blockBuf[index:keyEnd])
+		index += keySize
+		valSize := binary.BigEndian.Uint32(blockBuf[index : index+4])
+		index += 4
+		valEnd := index + valSize
+		val := string(blockBuf[index:valEnd])
+		index += valSize
+		items[i] = Item{
+			Key:   key,
+			Value: val,
+		}
+	}
+	for _, item := range items {
+		fmt.Printf("Key: %v Value %v\n", item.Key, item.Value)
+	}
+	return items
+}
+
 func readIndexEntry(reader io.Reader) (*indexEntry, error) {
 	buf := make([]byte, 4)
 	if _, err := io.ReadFull(reader, buf); err != nil {
@@ -276,9 +331,16 @@ func readIndexEntry(reader io.Reader) (*indexEntry, error) {
 	}
 	blockSize := binary.BigEndian.Uint32(buf)
 
+	buf = make([]byte, 4)
+	if _, err := io.ReadFull(reader, buf); err != nil {
+		return nil, err
+	}
+	itemCount := binary.BigEndian.Uint32(buf)
+
 	return &indexEntry{
 		key:       key,
 		offset:    indexOffset,
 		blockSize: blockSize,
+		itemCount: itemCount,
 	}, nil
 }
